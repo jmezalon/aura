@@ -1430,3 +1430,62 @@ input {
     padding-bottom: 24px;
   }
 }
+
+/* ---------- gradient-opted themes (e.g. Midnight) ---------- */
+/* restores the original vibrant treatment for themes with gradient:true */
+
+.theme-gradient .grad-text {
+  background: linear-gradient(100deg, var(--a1), var(--a2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.theme-gradient .btn {
+  background: linear-gradient(100deg, var(--a1), var(--a2));
+  color: #14101c;
+}
+
+.theme-gradient .pro-pill {
+  background: linear-gradient(100deg, var(--a1), var(--a2));
+  color: #14101c;
+}
+
+.theme-gradient .pro-pill.owned {
+  background: var(--card2);
+  color: var(--a3);
+}
+
+.theme-gradient .progress-fill {
+  background: linear-gradient(90deg, var(--a1), var(--a2));
+}
+
+.theme-gradient .week-bars .bar {
+  background: linear-gradient(180deg, var(--a1), var(--a2));
+}
+
+.theme-gradient .perfect-banner {
+  color: var(--text);
+  background: linear-gradient(100deg,
+    color-mix(in srgb, var(--a1) 22%, var(--card)),
+    color-mix(in srgb, var(--a2) 22%, var(--card)));
+  border-color: color-mix(in srgb, var(--a1) 40%, var(--line));
+}
+
+.theme-gradient .onboard .orb {
+  background: radial-gradient(circle at 32% 30%, var(--a3), var(--a1) 55%, var(--a2));
+  box-shadow: 0 0 60px color-mix(in srgb, var(--a1) 55%, transparent);
+}
+
+.theme-gradient body::before {
+  background:
+    radial-gradient(600px 400px at 85% -10%, color-mix(in srgb, var(--a1) 16%, transparent), transparent 70%),
+    radial-gradient(500px 380px at -10% 30%, color-mix(in srgb, var(--a2) 10%, transparent), transparent 70%);
+}
+
+.theme-gradient .recap-card {
+  background:
+    radial-gradient(320px 220px at 90% -10%, color-mix(in srgb, var(--a2) 45%, transparent), transparent 70%),
+    radial-gradient(300px 260px at -10% 110%, color-mix(in srgb, var(--a3) 30%, transparent), transparent 70%),
+    linear-gradient(160deg, var(--card2), var(--bg2));
+}

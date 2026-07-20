@@ -37,7 +37,7 @@ export interface AppState {
   aiNudge: AiNudge | null;
 }
 
-export type ThemeId = 'midnight' | 'sunset' | 'matcha' | 'cherry' | 'vapor';
+export type ThemeId = 'midnight' | 'sunset' | 'matcha' | 'cherry' | 'vapor' | 'neon';
 
 /** Optional action button shown inside a toast (e.g. Undo). */
 export interface ToastAction {

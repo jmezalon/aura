@@ -34,6 +34,8 @@ export default function App() {
     for (const [k, val] of Object.entries(theme.vars)) {
       document.documentElement.style.setProperty(k, val);
     }
+    // only gradient-opted themes (e.g. Midnight) get the vibrant treatment back
+    document.documentElement.classList.toggle('theme-gradient', Boolean(theme.gradient));
     document
       .querySelector('meta[name=theme-color]')
       ?.setAttribute('content', theme.vars['--bg']);

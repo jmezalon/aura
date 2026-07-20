@@ -30,6 +30,8 @@ export interface Theme {
   id: ThemeId;
   name: string;
   pro: boolean;
+  /** opt this theme back into the vibrant gradient treatment (default: flat) */
+  gradient?: boolean;
   /** [bg, card, accent1, accent2, text] */
   vars: Record<string, string>;
 }
@@ -120,6 +122,26 @@ export const THEMES: Theme[] = [
       '--a1': '#6E8386',
       '--a2': '#5C7275',
       '--a3': '#93A6A3',
+    },
+  },
+  // The original dark-neon look — brought back by popular demand as a pro theme.
+  // `gradient: true` re-enables the vibrant gradient treatment for this theme only.
+  {
+    id: 'neon',
+    name: 'Midnight',
+    pro: true,
+    gradient: true,
+    vars: {
+      '--bg': '#0b0b13',
+      '--bg2': '#13131f',
+      '--card': '#191926',
+      '--card2': '#20202f',
+      '--line': '#2b2b3d',
+      '--text': '#f2f1f7',
+      '--muted': '#8a89a3',
+      '--a1': '#a78bfa',
+      '--a2': '#f472b6',
+      '--a3': '#38e0c8',
     },
   },
 ];
