@@ -20,7 +20,7 @@ const APP_URL = process.env.APP_URL ?? 'http://localhost:5173';
 app.post('/api/checkout', async (_req, res) => {
   try {
     const session = await stripe.checkout.sessions.create({
-      ui_mode: 'embedded',
+      ui_mode: 'embedded_page',
       mode: 'subscription',
       redirect_on_completion: 'never',
       line_items: [
