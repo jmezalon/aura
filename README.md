@@ -20,8 +20,15 @@ that share card is the built-in growth loop.
 
 ```sh
 npm install
-cp ../SavePals/packages/backend/.env .env   # or create .env with STRIPE_SECRET_KEY=sk_test_…
+cp ../SavePals/packages/backend/.env .env   # or create .env (see keys below)
 npm run dev                                  # starts the API (:4242) + Vite (:5173)
+```
+
+`.env` needs two Stripe keys (same account):
+
+```sh
+STRIPE_SECRET_KEY=sk_test_…            # server (Checkout/portal/cancel)
+VITE_STRIPE_PUBLISHABLE_KEY=pk_test_…  # client (embedded Checkout in the modal)
 ```
 
 `npm run dev` runs both processes via concurrently; `dev:web` / `dev:api` run them
@@ -30,14 +37,23 @@ separately. Vite proxies `/api/*` to the Express server.
 Test the upgrade with Stripe's test card `4242 4242 4242 4242` (any future expiry,
 any CVC/ZIP). Dev shortcut: `?pro=1` unlocks Aura+, `?pro=0` relocks.
 
-### Payment flow
+### Payment flow (in-modal, no redirect)
 
-1. `POST /api/checkout` creates a subscription-mode Checkout Session ($2.49/mo,
-   product created inline — no dashboard setup needed).
-2. Stripe hosts the payment page and redirects back with `?session_id=…`.
-3. The app calls `GET /api/checkout/verify` and only flips `pro` on a **paid**
-   session (verified server-side, not just trusting the redirect). The buyer's
-   email is stored locally for re-sync/restore.
+Both subscribing and cancelling happen inside a modal — clicking the backdrop
+drops the user straight back into the app, no full-page Stripe redirect.
+
+1. `POST /api/checkout` creates an **embedded** subscription Checkout Session
+   ($2.49/mo, product created inline — no dashboard setup needed) and returns a
+   `clientSecret` + `sessionId`.
+2. The Aura+ modal mounts Stripe's embedded Checkout inline (`@stripe/stripe-js`
+   with `VITE_STRIPE_PUBLISHABLE_KEY`, `redirect_on_completion: 'never'`).
+3. On completion Stripe fires `onComplete` (no redirect); the app calls
+   `GET /api/checkout/verify` and only flips `pro` on a **paid** session
+   (verified server-side). The buyer's email is stored locally for
+   re-sync/restore.
+
+> The legacy `?session_id=…` / `?upgrade=cancelled` redirect handling is kept in
+> `App.tsx` for backwards-compat but is no longer part of the happy path.
 
 ### Entitlement (Stripe is the source of truth)
 
@@ -51,15 +67,19 @@ active/trialing subscription):
 - **Restore purchase**: the Aura+ modal has an "already have Aura+? restore"
   field so a subscriber can unlock on a **fresh browser or new device** by
   entering the email they paid with.
-- **Manage / cancel**: the Stats screen shows a "manage or cancel subscription"
-  button (pro only) → `POST /api/portal` opens a Stripe-hosted Billing Portal
-  where the user updates their card, views invoices, or cancels. Stripe cancels
-  at period end (access continues until the paid period is up); once the sub is
-  no longer active, load-time re-sync downgrades them to free.
+- **Cancel (in-modal)**: the Stats screen shows a "cancel subscription" button
+  (pro only) that opens a confirmation modal → `POST /api/cancel` sets
+  `cancel_at_period_end` on the active subscription (no Billing Portal redirect).
+  Access continues until the paid period is up; the modal shows that date. Once
+  the sub is no longer active, load-time re-sync downgrades them to free.
+- **Update card / invoices**: a smaller link under the cancel button still opens
+  the Stripe-hosted Billing Portal via `POST /api/portal` (there's no embedded
+  portal, so card edits and invoice history stay on Stripe's page).
 
 **One-time Stripe setup for launch:** the Billing Portal must be activated once
-per account at Settings → Billing → Customer portal (the sandbox already had a
-default config; the live account needs it saved before go-live).
+per account at Settings → Billing → Customer portal (still used by the
+"update card / invoices" link; the sandbox already had a default config, the
+live account needs it saved before go-live).
 
 Known tradeoff: restore trusts the submitted email (anyone who knows a
 subscriber's email could unlock). Fine for a $2.49 cosmetic upgrade; the hardening
@@ -79,6 +99,9 @@ derived from the request host, so preview and production domains both work.
   `npx vercel env rm STRIPE_SECRET_KEY production` then
   `npx vercel env add STRIPE_SECRET_KEY production` and paste the live key
   (from SavePal - Web Services, not the sandbox), then `npx vercel deploy --prod`.
+- `VITE_STRIPE_PUBLISHABLE_KEY` must also be set in Vercel (build-time env for the
+  client bundle) — the matching `pk_test_…` / `pk_live_…` for the secret key above.
+  The embedded Checkout modal won't render without it.
 - Redeploy: `npx vercel deploy --prod --yes`.
 
 ## Income playbook

@@ -157,6 +157,12 @@ input {
   border: 1px solid var(--line);
 }
 
+.btn-danger {
+  background: color-mix(in srgb, #C15B57 16%, var(--card2));
+  color: #C15B57;
+  border: 1px solid color-mix(in srgb, #C15B57 40%, transparent);
+}
+
 .muted {
   color: var(--muted);
 }
@@ -868,6 +874,18 @@ input {
 @keyframes slideUp {
   from { transform: translateY(60px); opacity: 0; }
   to { transform: none; opacity: 1; }
+}
+
+/* the modal turns into Stripe's embedded checkout sheet — keep it tall but
+   scrollable so the whole form is reachable on small screens */
+.modal-checkout {
+  max-height: 92vh;
+  overflow-y: auto;
+}
+
+.embedded-checkout {
+  margin-top: 14px;
+  min-height: 260px;
 }
 
 .modal h2 {

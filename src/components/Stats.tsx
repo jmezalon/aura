@@ -9,11 +9,12 @@ interface Props {
   update: (fn: (s: AppState) => AppState) => void;
   openPro: () => void;
   onManage: () => Promise<void>;
+  onCancel: () => void;
 }
 
 const DAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-export function Stats({ state, update, openPro, onManage }: Props) {
+export function Stats({ state, update, openPro, onManage, onCancel }: Props) {
   const [managing, setManaging] = useState(false);
 
   const manage = async () => {
@@ -124,12 +125,17 @@ export function Stats({ state, update, openPro, onManage }: Props) {
             <h2>subscription</h2>
             <span className="count">Aura+ ✦</span>
           </div>
-          <button className="btn btn-ghost" onClick={manage} disabled={managing}>
-            {managing ? 'opening billing…' : 'manage or cancel subscription'}
+          <button className="btn btn-ghost" onClick={onCancel}>
+            cancel subscription
           </button>
-          <p className="muted" style={{ fontSize: 12, marginTop: 10 }}>
-            update your card, view invoices, or cancel anytime via Stripe.
-          </p>
+          <button
+            className="link-btn"
+            onClick={manage}
+            disabled={managing}
+            style={{ marginTop: 12 }}
+          >
+            {managing ? 'opening billing…' : 'update card or view invoices on Stripe →'}
+          </button>
         </>
       )}
     </div>

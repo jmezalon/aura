@@ -16,11 +16,13 @@ app.use(express.json());
 const PORT = process.env.API_PORT ?? 4242;
 const APP_URL = process.env.APP_URL ?? 'http://localhost:5173';
 
-/** Create a subscription Checkout Session for Aura+ */
+/** Create an embedded subscription Checkout Session for Aura+ (mounts in-modal) */
 app.post('/api/checkout', async (_req, res) => {
   try {
     const session = await stripe.checkout.sessions.create({
+      ui_mode: 'embedded',
       mode: 'subscription',
+      redirect_on_completion: 'never',
       line_items: [
         {
           price_data: {
@@ -36,10 +38,8 @@ app.post('/api/checkout', async (_req, res) => {
           quantity: 1,
         },
       ],
-      success_url: `${APP_URL}/?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${APP_URL}/?upgrade=cancelled`,
     });
-    res.json({ url: session.url });
+    res.json({ clientSecret: session.client_secret, sessionId: session.id });
   } catch (err) {
     console.error('checkout error:', err.message);
     res.status(500).json({ error: 'Could not start checkout' });
@@ -118,6 +118,43 @@ app.post('/api/portal', async (req, res) => {
   } catch (err) {
     console.error('portal error:', err.message);
     res.status(500).json({ error: 'Could not open billing portal' });
+  }
+});
+
+/** Cancel the active Aura+ subscription in-app (cancel_at_period_end) */
+app.post('/api/cancel', async (req, res) => {
+  try {
+    const email = String(req.body?.email || '').trim();
+    if (!email) return res.status(400).json({ error: 'email required' });
+
+    const periodEnd = (sub) =>
+      sub.items?.data?.[0]?.current_period_end ?? sub.current_period_end ?? null;
+
+    const customers = await stripe.customers.list({ email, limit: 20 });
+    let sub = null;
+    for (const cust of customers.data) {
+      const subs = await stripe.subscriptions.list({
+        customer: cust.id,
+        status: 'active',
+        limit: 1,
+      });
+      if (subs.data.length) {
+        sub = subs.data[0];
+        break;
+      }
+    }
+    if (!sub) return res.status(404).json({ error: 'no active subscription' });
+
+    if (sub.cancel_at_period_end) {
+      return res.json({ canceled: true, alreadyCanceled: true, currentPeriodEnd: periodEnd(sub) });
+    }
+    const updated = await stripe.subscriptions.update(sub.id, {
+      cancel_at_period_end: true,
+    });
+    res.json({ canceled: true, currentPeriodEnd: periodEnd(updated) });
+  } catch (err) {
+    console.error('cancel error:', err.message);
+    res.status(500).json({ error: 'Could not cancel subscription' });
   }
 });
 
