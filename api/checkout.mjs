@@ -38,6 +38,8 @@ export default async function handler(req, res) {
       .json({ clientSecret: session.client_secret, sessionId: session.id });
   } catch (err) {
     console.error('checkout error:', err.message);
-    return res.status(500).json({ error: 'Could not start checkout' });
+    return res
+      .status(500)
+      .json({ error: 'Could not start checkout', detail: err.message });
   }
 }

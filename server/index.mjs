@@ -42,7 +42,7 @@ app.post('/api/checkout', async (_req, res) => {
     res.json({ clientSecret: session.client_secret, sessionId: session.id });
   } catch (err) {
     console.error('checkout error:', err.message);
-    res.status(500).json({ error: 'Could not start checkout' });
+    res.status(500).json({ error: 'Could not start checkout', detail: err.message });
   }
 });
 

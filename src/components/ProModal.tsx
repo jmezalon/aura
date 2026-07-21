@@ -34,12 +34,18 @@ export function ProModal({ onClose, onRestore, onComplete }: Props) {
     setError(null);
     try {
       const res = await fetch('/api/checkout', { method: 'POST' });
-      if (!res.ok) throw new Error(`status ${res.status}`);
-      const { clientSecret, sessionId } = await res.json();
-      if (!clientSecret) throw new Error('no client secret');
-      setCheckout({ clientSecret, sessionId });
-    } catch {
-      setError("couldn't reach checkout — try again in a sec");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.detail || data.error || `status ${res.status}`);
+      }
+      if (!data.clientSecret) throw new Error('no client secret returned');
+      setCheckout({ clientSecret: data.clientSecret, sessionId: data.sessionId });
+    } catch (e) {
+      setError(
+        e instanceof Error && e.message
+          ? `checkout error: ${e.message}`
+          : "couldn't reach checkout — try again in a sec",
+      );
     } finally {
       setLoading(false);
     }
