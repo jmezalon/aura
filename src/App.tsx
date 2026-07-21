@@ -7,6 +7,7 @@ import { Today } from './components/Today';
 import { Stats } from './components/Stats';
 import { Recap } from './components/Recap';
 import { ProModal } from './components/ProModal';
+import { CancelModal } from './components/CancelModal';
 import { Coach, CoachLocked } from './components/Coach';
 import { Icon, type IconName } from './icons';
 
@@ -23,6 +24,7 @@ export default function App() {
   const [state, setState] = useAppState();
   const [tab, setTab] = useState<Tab>('today');
   const [proOpen, setProOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
   const [toastState, setToastState] = useState<{ msg: string; action?: ToastAction } | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
 
@@ -118,6 +120,36 @@ export default function App() {
     }
   };
 
+  // embedded checkout finished in-modal — verify the session, flip Aura+ on
+  const completeCheckout = async (sessionId: string) => {
+    try {
+      const res = await fetch(
+        `/api/checkout/verify?session_id=${encodeURIComponent(sessionId)}`,
+      );
+      const { paid, email } = await res.json();
+      if (paid) {
+        setState((s) => ({ ...s, pro: true, email: email || s.email }));
+        setProOpen(false);
+        toast('welcome to Aura+ ✦');
+      } else {
+        toast("payment didn't go through");
+      }
+    } catch {
+      toast("couldn't verify payment");
+    }
+  };
+
+  // after an in-app cancel, re-sync entitlement from Stripe (source of truth)
+  const syncSubscription = () => {
+    if (!state.email) return;
+    fetch(`/api/subscription-status?email=${encodeURIComponent(state.email)}`)
+      .then((r) => r.json())
+      .then(({ pro }) => {
+        if (typeof pro === 'boolean') setState((s) => (s.pro === pro ? s : { ...s, pro }));
+      })
+      .catch(() => {});
+  };
+
   // restore Aura+ on a fresh browser / new device by looking up the email
   const restorePurchase = async (email: string): Promise<boolean> => {
     const res = await fetch(
@@ -182,6 +214,7 @@ export default function App() {
             update={update}
             openPro={() => setProOpen(true)}
             onManage={manageSubscription}
+            onCancel={() => setCancelOpen(true)}
           />
         )}
         {tab === 'coach' && (
@@ -206,7 +239,18 @@ export default function App() {
       </nav>
 
       {proOpen && (
-        <ProModal onClose={() => setProOpen(false)} onRestore={restorePurchase} />
+        <ProModal
+          onClose={() => setProOpen(false)}
+          onRestore={restorePurchase}
+          onComplete={completeCheckout}
+        />
+      )}
+      {cancelOpen && state.email && (
+        <CancelModal
+          email={state.email}
+          onClose={() => setCancelOpen(false)}
+          onCancelled={syncSubscription}
+        />
       )}
       {toastState && (
         <div className="toast">

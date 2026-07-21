@@ -1,17 +1,22 @@
 import Stripe from 'stripe';
 
-/** POST /api/checkout — create a subscription Checkout Session for Aura+ */
+/**
+ * POST /api/checkout — create an *embedded* subscription Checkout Session for
+ * Aura+. The client mounts it inside a modal (no full-page redirect), so we
+ * return a client secret instead of a hosted URL and handle completion in-app
+ * via /api/checkout/verify.
+ */
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
   try {
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-    const proto = req.headers['x-forwarded-proto'] ?? 'https';
-    const origin = process.env.APP_URL ?? `${proto}://${req.headers.host}`;
 
     const session = await stripe.checkout.sessions.create({
+      ui_mode: 'embedded_page',
       mode: 'subscription',
+      redirect_on_completion: 'never',
       line_items: [
         {
           price_data: {
@@ -27,12 +32,14 @@ export default async function handler(req, res) {
           quantity: 1,
         },
       ],
-      success_url: `${origin}/?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/?upgrade=cancelled`,
     });
-    return res.status(200).json({ url: session.url });
+    return res
+      .status(200)
+      .json({ clientSecret: session.client_secret, sessionId: session.id });
   } catch (err) {
     console.error('checkout error:', err.message);
-    return res.status(500).json({ error: 'Could not start checkout' });
+    return res
+      .status(500)
+      .json({ error: 'Could not start checkout', detail: err.message });
   }
 }

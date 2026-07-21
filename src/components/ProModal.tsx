@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { PRO_PRICE } from '../data';
 import { Icon, type IconName } from '../icons';
+import { EmbeddedCheckout } from './EmbeddedCheckout';
 
 const FEATURES: Array<{ icon: IconName; label: string }> = [
   { icon: 'infinity', label: 'unlimited quests (free caps at 5)' },
@@ -13,27 +14,39 @@ const FEATURES: Array<{ icon: IconName; label: string }> = [
 interface Props {
   onClose: () => void;
   onRestore: (email: string) => Promise<boolean>;
+  // verify the completed session, flip Aura+ on, and close the modal
+  onComplete: (sessionId: string) => Promise<void>;
 }
 
-export function ProModal({ onClose, onRestore }: Props) {
+export function ProModal({ onClose, onRestore, onComplete }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // once set, the embedded Stripe Checkout takes over the modal body
+  const [checkout, setCheckout] = useState<{ clientSecret: string; sessionId: string } | null>(null);
 
   const [showRestore, setShowRestore] = useState(false);
   const [restoreEmail, setRestoreEmail] = useState('');
   const [restoring, setRestoring] = useState(false);
   const [restoreErr, setRestoreErr] = useState<string | null>(null);
 
-  const checkout = async () => {
+  const startCheckout = async () => {
     setLoading(true);
     setError(null);
     try {
       const res = await fetch('/api/checkout', { method: 'POST' });
-      if (!res.ok) throw new Error(`status ${res.status}`);
-      const { url } = await res.json();
-      window.location.href = url;
-    } catch {
-      setError("couldn't reach checkout — try again in a sec");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.detail || data.error || `status ${res.status}`);
+      }
+      if (!data.clientSecret) throw new Error('no client secret returned');
+      setCheckout({ clientSecret: data.clientSecret, sessionId: data.sessionId });
+    } catch (e) {
+      setError(
+        e instanceof Error && e.message
+          ? `checkout error: ${e.message}`
+          : "couldn't reach checkout — try again in a sec",
+      );
+    } finally {
       setLoading(false);
     }
   };
@@ -54,6 +67,30 @@ export function ProModal({ onClose, onRestore }: Props) {
     }
   };
 
+  // once checkout is live, the modal becomes the payment sheet — clicking the
+  // backdrop still drops the user straight back into the app
+  if (checkout) {
+    return (
+      <div className="modal-backdrop" onClick={onClose}>
+        <div className="modal modal-checkout" onClick={(e) => e.stopPropagation()}>
+          <h2>
+            get <span className="grad-text">Aura+</span>
+          </h2>
+          <p className="muted" style={{ fontSize: 13, marginBottom: 4 }}>
+            tap outside anytime to head back.
+          </p>
+          <EmbeddedCheckout
+            clientSecret={checkout.clientSecret}
+            onComplete={() => onComplete(checkout.sessionId)}
+          />
+          <button className="btn btn-ghost" style={{ marginTop: 10 }} onClick={onClose}>
+            back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -71,7 +108,7 @@ export function ProModal({ onClose, onRestore }: Props) {
             </li>
           ))}
         </ul>
-        <button className="btn" onClick={checkout} disabled={loading}>
+        <button className="btn" onClick={startCheckout} disabled={loading}>
           {loading ? 'opening checkout…' : `get Aura+ · ${PRO_PRICE}`}
         </button>
         {error && (
