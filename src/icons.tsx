@@ -49,6 +49,8 @@ import {
   Plus,
   RefreshCw,
   Sparkle,
+  Eye,
+  X,
 } from 'lucide-react';
 
 /**
@@ -108,6 +110,8 @@ export const ICONS = {
   plus: Plus,
   'refresh-cw': RefreshCw,
   sparkle: Sparkle,
+  eye: Eye,
+  x: X,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

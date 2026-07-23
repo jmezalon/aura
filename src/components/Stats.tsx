@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import type { AppState } from '../types';
+import { useEffect, useRef, useState } from 'react';
+import type { AppState, ThemeId } from '../types';
 import { THEMES } from '../data';
 import { lastNDays, pointsForDay, streak, totalAura, todayKey, weekStats } from '../store';
 import { Icon } from '../icons';
@@ -10,12 +10,31 @@ interface Props {
   openPro: () => void;
   onManage: () => Promise<void>;
   onCancel: () => void;
+  previewTheme: ThemeId | null;
+  onPreviewTheme: (id: ThemeId | null) => void;
 }
 
 const DAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-export function Stats({ state, update, openPro, onManage, onCancel }: Props) {
+export function Stats({
+  state,
+  update,
+  openPro,
+  onManage,
+  onCancel,
+  previewTheme,
+  onPreviewTheme,
+}: Props) {
   const [managing, setManaging] = useState(false);
+  const themeGrid = useRef<HTMLDivElement>(null);
+
+  // the preview bar floats over the bottom of the screen — lift the swatches
+  // clear of it so the row stays visible while they're trying themes on
+  useEffect(() => {
+    if (previewTheme) {
+      themeGrid.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [previewTheme]);
 
   const manage = async () => {
     setManaging(true);
@@ -33,11 +52,15 @@ export function Stats({ state, update, openPro, onManage, onCancel }: Props) {
   const aura = totalAura(state.log, state.habits);
   const currentStreak = streak(state.log);
 
-  const pickTheme = (id: (typeof THEMES)[number]['id'], locked: boolean) => {
+  // locked themes are try-before-you-buy: the first tap wears the theme for
+  // real, tapping the one you're already wearing is what opens the paywall.
+  const pickTheme = (id: ThemeId, locked: boolean) => {
     if (locked) {
-      openPro();
+      if (previewTheme === id) openPro();
+      else onPreviewTheme(id);
       return;
     }
+    onPreviewTheme(null);
     update((s) => ({ ...s, theme: id }));
   };
 
@@ -97,27 +120,38 @@ export function Stats({ state, update, openPro, onManage, onCancel }: Props) {
         <span className="count">theme</span>
       </div>
 
-      <div className="theme-grid">
+      <div className="theme-grid" ref={themeGrid}>
         {THEMES.map((t) => {
           const locked = t.pro && !state.pro;
+          const previewing = previewTheme === t.id;
+          const active = previewing || (!previewTheme && state.theme === t.id);
           return (
             <button
               key={t.id}
-              className={`theme-dot ${state.theme === t.id ? 'active' : ''}`}
+              className={`theme-dot ${active ? 'active' : ''} ${previewing ? 'previewing' : ''}`}
               style={{
                 background: `linear-gradient(135deg, ${t.vars['--a1']}, ${t.vars['--a2']})`,
               }}
-              title={t.name}
+              title={locked ? `${t.name} — tap to preview` : t.name}
               onClick={() => pickTheme(t.id, locked)}
             >
-              {locked && <span className="lock"><Icon name="lock" size={15} /></span>}
+              {locked && (
+                <span className="lock">
+                  <Icon name={previewing ? 'eye' : 'lock'} size={15} />
+                </span>
+              )}
             </button>
           );
         })}
       </div>
-      <p className="muted" style={{ fontSize: 12, marginTop: 10, display: 'flex', alignItems: 'center', gap: 5 }}>
-        <Icon name="lock" size={12} /> themes are part of Aura+
-      </p>
+      {!state.pro && (
+        <p className="muted" style={{ fontSize: 12, marginTop: 10, display: 'flex', alignItems: 'center', gap: 5 }}>
+          <Icon name="lock" size={12} />
+          {previewTheme
+            ? 'tap it again to keep this vibe with Aura+'
+            : 'tap a locked theme to try it on — Aura+ makes it yours'}
+        </p>
+      )}
 
       {state.pro && (
         <>

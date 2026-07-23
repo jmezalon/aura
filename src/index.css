@@ -767,6 +767,99 @@ input {
   background: rgba(0, 0, 0, 0.42);
 }
 
+/* a locked theme being worn on trial — lift the veil so they see the real thing */
+.theme-dot.previewing .lock {
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.theme-dot.previewing {
+  border-color: var(--text);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--a1) 32%, transparent);
+}
+
+/* ---------- locked-theme preview bar ---------- */
+
+.preview-bar {
+  position: fixed;
+  bottom: calc(88px + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 32px);
+  max-width: 420px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 10px 10px 16px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  z-index: 30;
+  /* fadeUp ends on `transform: none`, which would drop the centering */
+  animation: fadeUpCentered 0.25s ease both;
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--text) 16%, transparent);
+}
+
+/* the bar floats over the content — give the screen room so nothing hides under it */
+#root:has(.preview-bar) .screen {
+  padding-bottom: 176px;
+}
+
+@keyframes fadeUpCentered {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%);
+  }
+}
+
+.preview-bar .pv-label {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.preview-bar .pv-label strong {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.preview-bar .pv-unlock {
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--bg2);
+  background: var(--a1);
+  padding: 8px 16px;
+  border-radius: 999px;
+}
+
+.preview-bar .pv-close {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  color: var(--muted);
+}
+
+.preview-bar .pv-close:active {
+  background: var(--card2);
+}
+
 /* ---------- recap ---------- */
 
 .recap-card {
@@ -962,6 +1055,11 @@ input {
   animation: fadeUp 0.25s ease both;
   white-space: nowrap;
   box-shadow: 0 8px 24px color-mix(in srgb, var(--text) 12%, transparent);
+}
+
+/* keep the toast clear of the theme-preview bar */
+#root:has(.preview-bar) .toast {
+  bottom: 158px;
 }
 
 .toast-action {
@@ -1447,6 +1545,10 @@ input {
   .coach-composer {
     padding-bottom: 24px;
   }
+  /* no tabbar on desktop — the preview bar can sit lower */
+  .preview-bar {
+    bottom: 28px;
+  }
 }
 
 /* ---------- gradient-opted themes (e.g. Midnight) ---------- */
@@ -1460,6 +1562,11 @@ input {
 }
 
 .theme-gradient .btn {
+  background: linear-gradient(100deg, var(--a1), var(--a2));
+  color: #14101c;
+}
+
+.theme-gradient .pv-unlock {
   background: linear-gradient(100deg, var(--a1), var(--a2));
   color: #14101c;
 }

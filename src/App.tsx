@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { AppState, ToastAction } from './types';
+import type { AppState, ThemeId, ToastAction } from './types';
 import { THEMES } from './data';
 import { loadState, useAppState } from './store';
 import { Onboarding } from './components/Onboarding';
@@ -13,6 +13,9 @@ import { Icon, type IconName } from './icons';
 
 type Tab = 'today' | 'stats' | 'coach' | 'recap';
 
+/** where the in-flight theme try-on lives while Stripe has the user */
+const PREVIEW_KEY = 'aura-theme-preview';
+
 const TABS: Array<{ id: Tab; label: string; icon: IconName }> = [
   { id: 'today', label: 'today', icon: 'zap' },
   { id: 'stats', label: 'stats', icon: 'chart-column' },
@@ -25,14 +28,25 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('today');
   const [proOpen, setProOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  // a locked theme the user is trying on — live, but not saved to their state.
+  // Survives the Stripe round-trip so the vibe they paid for is the one they get.
+  const [previewTheme, setPreviewTheme] = useState<ThemeId | null>(
+    () => (sessionStorage.getItem(PREVIEW_KEY) as ThemeId | null) || null,
+  );
   const [toastState, setToastState] = useState<{ msg: string; action?: ToastAction } | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
 
   const update = (fn: (s: AppState) => AppState) => setState(fn);
 
-  // apply theme vars to :root
   useEffect(() => {
-    const theme = THEMES.find((t) => t.id === state.theme) ?? THEMES[0];
+    if (previewTheme) sessionStorage.setItem(PREVIEW_KEY, previewTheme);
+    else sessionStorage.removeItem(PREVIEW_KEY);
+  }, [previewTheme]);
+
+  // apply theme vars to :root — a preview wins over the saved theme
+  useEffect(() => {
+    const activeId = previewTheme ?? state.theme;
+    const theme = THEMES.find((t) => t.id === activeId) ?? THEMES[0];
     for (const [k, val] of Object.entries(theme.vars)) {
       document.documentElement.style.setProperty(k, val);
     }
@@ -41,7 +55,22 @@ export default function App() {
     document
       .querySelector('meta[name=theme-color]')
       ?.setAttribute('content', theme.vars['--bg']);
-  }, [state.theme]);
+  }, [state.theme, previewTheme]);
+
+  // if they go Aura+ while trying a theme on, keep the one they were looking at
+  useEffect(() => {
+    if (state.pro && previewTheme) {
+      const id = previewTheme;
+      setPreviewTheme(null);
+      setState((s) => ({ ...s, theme: id }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.pro]);
+
+  const goTab = (next: Tab) => {
+    setPreviewTheme(null);
+    setTab(next);
+  };
 
   const toast = (msg: string, action?: ToastAction) => {
     window.clearTimeout(toastTimer.current);
@@ -187,7 +216,7 @@ export default function App() {
             <button
               key={t.id}
               className={tab === t.id ? 'active' : ''}
-              onClick={() => setTab(t.id)}
+              onClick={() => goTab(t.id)}
             >
               <span className="tab-emoji"><Icon name={t.icon} size={19} /></span>
               {t.label}
@@ -215,6 +244,8 @@ export default function App() {
             openPro={() => setProOpen(true)}
             onManage={manageSubscription}
             onCancel={() => setCancelOpen(true)}
+            previewTheme={previewTheme}
+            onPreviewTheme={setPreviewTheme}
           />
         )}
         {tab === 'coach' && (
@@ -230,13 +261,32 @@ export default function App() {
           <button
             key={t.id}
             className={tab === t.id ? 'active' : ''}
-            onClick={() => setTab(t.id)}
+            onClick={() => goTab(t.id)}
           >
             <span className="tab-emoji"><Icon name={t.icon} size={20} /></span>
             {t.label}
           </button>
         ))}
       </nav>
+
+      {previewTheme && (
+        <div className="preview-bar">
+          <span className="pv-label">
+            <Icon name="eye" size={15} />
+            trying on <strong>{THEMES.find((t) => t.id === previewTheme)?.name}</strong>
+          </span>
+          <button className="pv-unlock" onClick={() => setProOpen(true)}>
+            unlock
+          </button>
+          <button
+            className="pv-close"
+            aria-label="stop previewing"
+            onClick={() => setPreviewTheme(null)}
+          >
+            <Icon name="x" size={16} />
+          </button>
+        </div>
+      )}
 
       {proOpen && (
         <ProModal
